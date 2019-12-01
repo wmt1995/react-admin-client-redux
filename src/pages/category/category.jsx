@@ -1,7 +1,9 @@
 import React ,{Component} from 'react'
 import {Card,Table,Button,Icon, message, Modal} from 'antd'
-import {reqCategorys} from "../../api";
+import {reqCategorys, reqAddCategorys,reqUpdateCategorys, reqCategory} from "../../api";
 import LinkButton from '../../component/link-button'
+import AddForm from "./add-form";
+import UndataFrom from './undate-form'
 /*商品分类路由*/
 export default class  Category extends Component {
 	state = {
@@ -28,8 +30,9 @@ export default class  Category extends Component {
 
 				//category为渲染每一行时的数据对象
 				render: (category) => (
+
 						<span>
-							<LinkButton onClick={this.showUpdate}>修改分类</LinkButton>
+							<LinkButton onClick={() =>this.showUpdate(category)}>修改分类</LinkButton>
 							{/*如何向事件回调函数传递参数：先定义一个匿名参数，在函数调用处理的函数并传入参数*/
 							/*不能写成-->onClink={this.showSubCategorys(category)}
 							* 这样就函数调用
@@ -42,13 +45,14 @@ export default class  Category extends Component {
 ];
 	}
 
-	//异步获取一级分类列表
-	getCategorys = async() =>{
+	//异步获取一级/二级分类列表
+	//parentId:不赋值从状态中取值
+	getCategorys = async(parentId) =>{
 
 		//在发送前，显示loading
 		this.setState({loading:true})
-		const {parentId} = this.state
 
+		parentId = parentId ||this.state.parentId
 		//发ajax获取数据
 		const result =await reqCategorys(parentId)
 		//请求完成后隐藏loading
@@ -62,7 +66,6 @@ export default class  Category extends Component {
 				this.setState({categorys})
 			}else {
 				//更新二级分类状态
-				console.log(parentId+'0')
 				this.setState({subCategorys:categorys})
 			}
 
@@ -96,6 +99,9 @@ export default class  Category extends Component {
 
 	//响应点击取消：隐藏确认框
 	handleCancel =()=>{
+		//清除数据
+		this.form.resetFields()
+		//隐藏
 		this.setState({
 			showStatus:0
 		})
@@ -109,32 +115,100 @@ export default class  Category extends Component {
 	}
 
 	//显示修改
-	showUpdate =() =>{
+	showUpdate =(category) =>{
+		//保存分类对象
+		this.category=category
 		this.setState({
 			showStatus:2
 		})
 	}
 
 	//添加分类
-	addCategory =() =>{
+	addCategory =() => {
+
+		//进行表单验证，通过后再处理
+		this.form.validateFields(async(err,values)=>{
+			if(!err){
+				//1.隐藏确认框
+				this.setState({
+					showStatus:0,
+				})
+				//2.提交添加请求
+				const {categoryName,parentId}=values
+				//清除数据
+				this.form.resetFields()
+
+				const result= await reqAddCategorys({categoryName,parentId})
+
+				if(result.status===0){
+					//3.更新列表,如果非当前列表则跳转
+					if (parentId===this.state.parentId){
+						this.getCategorys()
+					}else {
+						const result2=await reqCategory(parentId)
+							if(result2.status===0){
+
+							const parentName=result2.data.name
+
+							this.setState({
+								parentId,
+								parentName
+							},() => this.getCategorys())
+						}
+					}
+			}
+			}
+		})
 
 	}
+
+
+
+
 	//更新分类
 	updateCategory =() =>{
+			//进行表单验证，通过后再处理
+		this.form.validateFields(async(err,values)=>{
+			if(!err){
 
+				//1.隐藏确认框
+				this.setState({
+					showStatus:0
+				})
+				const categoryId=this.category._id
+				const {categoryName}=values
+				//清除数据
+				this.form.resetFields()
+
+				//2.发送更新请求
+				const result = await reqUpdateCategorys(categoryName,categoryId)
+
+				if(result.status===0){
+					//3.更新列表
+					this.getCategorys()
+				}
+			}
+		})
 	}
+
+
+
+
+
 	//为第一次render()准备数据
 	componentWillMount () {
 		this.initColumns()
 	}
 
 	//执行异步任务：发送ajax请求
-	componentDidMount () {
+	componentDidMount() {
 		this.getCategorys()
 	}
 	render () {
 		//读取数据
 		const {categorys,loading,subCategorys,parentId,parentName,showStatus} = this.state
+		//点击 修改后   category才有值
+		const category=this.category ||{}
 		//Card 左侧
 		const title = parentId==='0'?'一级分类列表':(
 				<span>
@@ -182,9 +256,12 @@ export default class  Category extends Component {
           onOk={this.addCategory}
           onCancel={this.handleCancel}
         >
-          <p>Some contents...</p>
-          <p>Some contents...</p>
-          <p>Some contents...</p>
+          <AddForm categorys={categorys}
+									 parentId={parentId}
+									 setForm={(form) =>{
+
+									 	return this.form=form}}/>
+
         </Modal>
 
 					{/*修改分类*/}
@@ -194,12 +271,13 @@ export default class  Category extends Component {
           onOk={this.updateCategory}
           onCancel={this.handleCancel}
         >
-          <p>Some contents...</p>
-          <p>Some contents...</p>
-          <p>Some contents...</p>
+          <UndataFrom
+							categoryName={category.name}
+							setForm={(form) =>{this.form=form}}/>
         </Modal>
 				</Card>
 			</div>
 		)
 	}
 }
+

@@ -11,15 +11,6 @@
 import axios from 'axios'
 import {message} from 'antd'
 
-// export default function ajax(url,data={},type='GET') {
-// 	if(type=='GET'){
-// 		axios.get(url,{
-// 			params:data
-// 		})
-// 	}else{
-// 		axios.post(url,data)
-// 	}
-// }
 
 export default function ajax(url, data={},type='GET') {
 	return new Promise((resolve, reject) => {
@@ -37,7 +28,7 @@ export default function ajax(url, data={},type='GET') {
 			resolve(response.data)
 			//3.失败,不调用reject（reason），而是提示错误信息
 		}).catch(error => {
-			message.error('chuxuo' + error.message)
+			message.error('出错啦' + error.message)
 
 		})
 

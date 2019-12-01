@@ -1,17 +1,16 @@
 import React ,{Component} from 'react'
 import {withRouter} from 'react-router-dom'
 import { Modal} from 'antd';
+import {connect} from 'react-redux'
 
 import LinkButton from "../link-button";
 import menuList from '../../config/menuConfig'
-import memoryUtils from '../../utils/memoryUtils'
 import {reqWeather} from '../../api/index'
 import {formateDate} from '../../utils/dateUtils'
-import storageUtils from '../../utils/storageUtils'
 
 
 import './index.less'
-
+import {logout} from '../../redux/actions'
 
 class  Header extends Component {
 	state = {
@@ -44,7 +43,7 @@ class  Header extends Component {
 				title=item.title
 			}else if (item.children) {
 				//在所有 子ITEM中查找匹配的path
-				const cItem = item.children.find(cItem => cItem.key===path)
+				const cItem = item.children.find(cItem =>path.indexOf(cItem.key)===0)
 				//有值说明匹配成功
 				if(cItem) {
 					//取出title
@@ -59,11 +58,8 @@ class  Header extends Component {
 		Modal.confirm({
     content: '确定退出吗？',
     onOk:() => {
-      //删除保存的user数据
-			storageUtils.removeUser()
-			memoryUtils.user={}
-			//跳转到login
-			this.props.history.replace('/login')
+
+			this.props.logout()
     },
   });
 	}
@@ -85,10 +81,11 @@ class  Header extends Component {
 	}
 	render () {
 		const {currentTime, dayPictureUrl, weather}=this.state
-		const {username}=memoryUtils.user
+		const {username}=this.props.user
 
 		//不能写在componentWillMount中，因为需要更新显示
-		const title = this.getTitle()
+		//const title = this.getTitle()
+		const title=this.props.headTitle
 		return (
 				<div className="header">
 					<div className="header-top">
@@ -108,4 +105,7 @@ class  Header extends Component {
 	}
 }
 
-export default withRouter(Header)
+export default connect(
+		state=>({headTitle:state.headTitle,user:state.user}),
+		{logout}
+)(withRouter(Header))
